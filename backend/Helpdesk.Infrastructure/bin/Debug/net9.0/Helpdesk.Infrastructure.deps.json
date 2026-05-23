@@ -1,0 +1,56 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "Helpdesk.Infrastructure/1.0.0": {
+        "dependencies": {
+          "Helpdesk.Application": "1.0.0",
+          "Helpdesk.Domain": "1.0.0"
+        },
+        "runtime": {
+          "Helpdesk.Infrastructure.dll": {}
+        }
+      },
+      "Helpdesk.Application/1.0.0": {
+        "dependencies": {
+          "Helpdesk.Domain": "1.0.0"
+        },
+        "runtime": {
+          "Helpdesk.Application.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Helpdesk.Domain/1.0.0": {
+        "runtime": {
+          "Helpdesk.Domain.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Helpdesk.Infrastructure/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Helpdesk.Application/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Helpdesk.Domain/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

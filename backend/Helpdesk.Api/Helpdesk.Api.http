@@ -1,0 +1,31 @@
+@Helpdesk.Api_HostAddress = http://localhost:5012
+@TenantId = 2f39f1f7-8895-4ad2-95f7-8f70e5f02571
+@CustomerId = 52a437d8-7304-4f60-aae4-2136b51ea69d
+
+GET {{Helpdesk.Api_HostAddress}}/api/tenants
+Accept: application/json
+
+###
+
+GET {{Helpdesk.Api_HostAddress}}/api/tenants/{{TenantId}}/dashboard
+Accept: application/json
+
+###
+
+GET {{Helpdesk.Api_HostAddress}}/api/tenants/{{TenantId}}/tickets?status=Open
+Accept: application/json
+
+###
+
+POST {{Helpdesk.Api_HostAddress}}/api/tickets
+Content-Type: application/json
+
+{
+  "tenantId": "{{TenantId}}",
+  "customerId": "{{CustomerId}}",
+  "title": "Cannot download invoice",
+  "description": "The customer receives an empty PDF from the billing page.",
+  "priority": "High"
+}
+
+###
