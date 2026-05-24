@@ -10,4 +10,5 @@ public static class ApiRoutes
     public const string TenantTicketById = TenantTickets + "/{ticketId:guid}";
     public const string Tickets = Root + "/tickets";
     public const string TicketComments = TenantTicketById + "/comments";
+    public const string AuditLogs = Root + "/audit-logs";
 }

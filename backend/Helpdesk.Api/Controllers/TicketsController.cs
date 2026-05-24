@@ -2,11 +2,13 @@ using Helpdesk.Api.Constants;
 using Helpdesk.Application.Requests;
 using Helpdesk.Application.Services;
 using Helpdesk.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Helpdesk.Api.Controllers;
 
 [ApiController]
+[Authorize]
 public sealed class TicketsController : ControllerBase
 {
     private readonly TicketService _ticketService;
@@ -16,18 +18,18 @@ public sealed class TicketsController : ControllerBase
         _ticketService = ticketService;
     }
 
-    [HttpGet(ApiRoutes.TenantTickets)]
+    [HttpPost(ApiRoutes.TenantTickets)]
+    [Authorize(Roles = RoleConstants.AllRoles)]
     public IActionResult GetTickets(
         Guid tenantId,
-        [FromQuery] TicketFilterRequest request)
+        [FromBody] SearchRequest<TicketSearchCriteria> request)
     {
-        request.TenantId = tenantId;
-
-        var response = _ticketService.GetTickets(request);
+        var response = _ticketService.GetTicketsPaginated(request, tenantId);
         return StatusCode(response.StatusCode, response);
     }
 
     [HttpGet(ApiRoutes.TenantTicketById)]
+    [Authorize(Roles = RoleConstants.AllRoles)]
     public IActionResult GetTicket([FromRoute] TicketRouteRequest request)
     {
         var response = _ticketService.GetTicket(request);
@@ -35,6 +37,7 @@ public sealed class TicketsController : ControllerBase
     }
 
     [HttpPost(ApiRoutes.Tickets)]
+    [Authorize(Roles = RoleConstants.AdminAndCustomer)]
     public IActionResult CreateTicket(CreateTicketRequest request)
     {
         var response = _ticketService.CreateTicket(request);
@@ -42,6 +45,7 @@ public sealed class TicketsController : ControllerBase
     }
 
     [HttpPut(ApiRoutes.TenantTicketById)]
+    [Authorize(Roles = RoleConstants.AdminAndAgent)]
     public IActionResult UpdateTicket([FromRoute] TicketRouteRequest route, UpdateTicketRequest request)
     {
         var command = new UpdateTicketCommand
@@ -55,6 +59,7 @@ public sealed class TicketsController : ControllerBase
     }
 
     [HttpPost(ApiRoutes.TicketComments)]
+    [Authorize(Roles = RoleConstants.AllRoles)]
     public IActionResult AddComment([FromRoute] TicketRouteRequest route, AddCommentRequest request)
     {
         var command = new AddCommentCommand

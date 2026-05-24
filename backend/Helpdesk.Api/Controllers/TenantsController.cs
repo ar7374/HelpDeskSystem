@@ -1,11 +1,13 @@
 using Helpdesk.Api.Constants;
 using Helpdesk.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Helpdesk.Api.Controllers;
 
 [ApiController]
 [Route(ApiRoutes.Tenants)]
+[Authorize]
 public sealed class TenantsController : ControllerBase
 {
     private readonly TenantService _tenantService;

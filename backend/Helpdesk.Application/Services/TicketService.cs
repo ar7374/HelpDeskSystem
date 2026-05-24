@@ -1,3 +1,4 @@
+using Helpdesk.Application.Common;
 using Helpdesk.Application.Constants;
 using Helpdesk.Application.Dtos;
 using Helpdesk.Application.Repositories;
@@ -11,41 +12,69 @@ namespace Helpdesk.Application.Services;
 public sealed class TicketService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly AuditService _auditService;
+    private readonly ICurrentUserService _currentUserService;
 
-    public TicketService(IUnitOfWork unitOfWork)
+    public TicketService(
+        IUnitOfWork unitOfWork,
+        AuditService auditService,
+        ICurrentUserService currentUserService)
     {
         _unitOfWork = unitOfWork;
+        _auditService = auditService;
+        _currentUserService = currentUserService;
     }
 
-    public ApiResponse<IReadOnlyList<TicketListItem>> GetTickets(TicketFilterRequest request)
+    public ApiResponse<PaginatedListDto<TicketListItem>> GetTicketsPaginated(
+        SearchRequest<TicketSearchCriteria> request,
+        Guid tenantId)
     {
-        var tickets = _unitOfWork.Tickets
-            .GetByFilter(request)
+        var paginatedTickets = _unitOfWork.Tickets.GetPaginated(request, tenantId);
+
+        var items = paginatedTickets.Data
             .Select(ToListItem)
             .ToList();
 
-        return ApiResponse<IReadOnlyList<TicketListItem>>.Success(ResponseMessages.Success.TicketsFetched, tickets);
+        var result = new PaginatedListDto<TicketListItem>
+        {
+            Data = items,
+            Size = paginatedTickets.Size,
+            TotalRecords = paginatedTickets.TotalRecords
+        };
+
+        return ApiResponse<PaginatedListDto<TicketListItem>>.Success(
+            ResponseMessages.Success.TicketsFetched,
+            result);
     }
 
     public ApiResponse<TicketDetails> GetTicket(TicketRouteRequest request)
     {
-        var ticket = _unitOfWork.Tickets.GetById(request.TenantId, request.TicketId);
+        var ticket = _unitOfWork.Tickets.GetById(
+            request.TenantId,
+            request.TicketId);
+
         if (ticket is null)
         {
-            return ApiResponse<TicketDetails>.NotFound(ResponseMessages.Error.TicketNotFound);
+            return ApiResponse<TicketDetails>.NotFound(
+                ResponseMessages.Error.TicketNotFound);
         }
 
-        return ApiResponse<TicketDetails>.Success(ResponseMessages.Success.TicketFetched, ToDetails(ticket));
+        return ApiResponse<TicketDetails>.Success(
+            ResponseMessages.Success.TicketFetched,
+            ToDetails(ticket));
     }
 
     public ApiResponse<TicketDetails> CreateTicket(CreateTicketRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Description))
+        if (string.IsNullOrWhiteSpace(request.Title) ||
+            string.IsNullOrWhiteSpace(request.Description))
         {
-            return ApiResponse<TicketDetails>.BadRequest(ResponseMessages.Error.TitleAndDescriptionRequired);
+            return ApiResponse<TicketDetails>.BadRequest(
+                ResponseMessages.Error.TitleAndDescriptionRequired);
         }
 
         var ticketCount = _unitOfWork.Tickets.CountByTenantId(request.TenantId);
+
         var now = DateTime.UtcNow;
 
         var ticket = new Ticket
@@ -63,40 +92,74 @@ public sealed class TicketService
         };
 
         _unitOfWork.Tickets.Add(ticket);
-        return ApiResponse<TicketDetails>.Created(ResponseMessages.Success.TicketCreated, ToDetails(ticket));
+
+        _auditService.Log(
+            request.TenantId,
+            _currentUserService.UserId,
+            "Create",
+            "Ticket",
+            ticket.Id,
+            $"Created ticket {ticket.TicketNumber}");
+
+        return ApiResponse<TicketDetails>.Created(
+            ResponseMessages.Success.TicketCreated,
+            ToDetails(ticket));
     }
 
     public ApiResponse<TicketDetails> UpdateTicket(UpdateTicketCommand command)
     {
-        var ticket = _unitOfWork.Tickets.GetById(command.Route.TenantId, command.Route.TicketId);
+        var ticket = _unitOfWork.Tickets.GetById(
+            command.Route.TenantId,
+            command.Route.TicketId);
+
         if (ticket is null)
         {
-            return ApiResponse<TicketDetails>.NotFound(ResponseMessages.Error.TicketNotFound);
+            return ApiResponse<TicketDetails>.NotFound(
+                ResponseMessages.Error.TicketNotFound);
         }
 
-        DateTime? resolvedAt = command.Request.Status is TicketStatus.Resolved or TicketStatus.Closed
-            ? ticket.ResolvedAtUtc ?? DateTime.UtcNow
-            : null;
+        var oldStatus = ticket.Status;
+
+        DateTime? resolvedAt =
+            command.Request.Status is TicketStatus.Resolved or TicketStatus.Closed
+                ? ticket.ResolvedAtUtc ?? DateTime.UtcNow
+                : null;
 
         ticket.Status = command.Request.Status;
         ticket.AgentId = command.Request.AgentId;
         ticket.ResolvedAtUtc = resolvedAt;
 
         _unitOfWork.Tickets.Update(ticket);
-        return ApiResponse<TicketDetails>.Success(ResponseMessages.Success.TicketUpdated, ToDetails(ticket));
+
+        _auditService.Log(
+            command.Route.TenantId,
+            _currentUserService.UserId,
+            "Update",
+            "Ticket",
+            ticket.Id,
+            $"Changed ticket {ticket.TicketNumber} status from {oldStatus} to {ticket.Status}");
+
+        return ApiResponse<TicketDetails>.Success(
+            ResponseMessages.Success.TicketUpdated,
+            ToDetails(ticket));
     }
 
     public ApiResponse<TicketDetails> AddComment(AddCommentCommand command)
     {
         if (string.IsNullOrWhiteSpace(command.Request.Body))
         {
-            return ApiResponse<TicketDetails>.BadRequest(ResponseMessages.Error.CommentBodyRequired);
+            return ApiResponse<TicketDetails>.BadRequest(
+                ResponseMessages.Error.CommentBodyRequired);
         }
 
-        var ticket = _unitOfWork.Tickets.GetById(command.Route.TenantId, command.Route.TicketId);
+        var ticket = _unitOfWork.Tickets.GetById(
+            command.Route.TenantId,
+            command.Route.TicketId);
+
         if (ticket is null)
         {
-            return ApiResponse<TicketDetails>.NotFound(ResponseMessages.Error.TicketNotFound);
+            return ApiResponse<TicketDetails>.NotFound(
+                ResponseMessages.Error.TicketNotFound);
         }
 
         var comment = new TicketComment
@@ -109,13 +172,27 @@ public sealed class TicketService
         };
 
         _unitOfWork.TicketComments.Add(comment);
-        return ApiResponse<TicketDetails>.Success(ResponseMessages.Success.CommentAdded, ToDetails(ticket));
+
+        _auditService.Log(
+            command.Route.TenantId,
+            _currentUserService.UserId,
+            "Comment",
+            "Ticket",
+            ticket.Id,
+            $"Added comment to ticket {ticket.TicketNumber}");
+
+        return ApiResponse<TicketDetails>.Success(
+            ResponseMessages.Success.CommentAdded,
+            ToDetails(ticket));
     }
 
     private TicketListItem ToListItem(Ticket ticket)
     {
         var customer = _unitOfWork.Users.GetById(ticket.CustomerId)!;
-        var agent = ticket.AgentId is null ? null : _unitOfWork.Users.GetById(ticket.AgentId.Value);
+
+        var agent = ticket.AgentId is null
+            ? null
+            : _unitOfWork.Users.GetById(ticket.AgentId.Value);
 
         return new TicketListItem
         {
@@ -134,7 +211,11 @@ public sealed class TicketService
     private TicketDetails ToDetails(Ticket ticket)
     {
         var customer = _unitOfWork.Users.GetById(ticket.CustomerId)!;
-        var agent = ticket.AgentId is null ? null : _unitOfWork.Users.GetById(ticket.AgentId.Value);
+
+        var agent = ticket.AgentId is null
+            ? null
+            : _unitOfWork.Users.GetById(ticket.AgentId.Value);
+
         var comments = _unitOfWork.TicketComments.GetByTicketId(ticket.Id);
 
         return new TicketDetails

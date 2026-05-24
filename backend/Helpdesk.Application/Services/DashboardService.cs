@@ -18,7 +18,7 @@ public sealed class DashboardService
 
     public ApiResponse<DashboardSummary> GetDashboard(Guid tenantId)
     {
-        var tickets = _unitOfWork.Tickets.GetByFilter(new TicketFilterRequest { TenantId = tenantId });
+        var tickets = _unitOfWork.Tickets.GetByTenantId(tenantId);
         var resolvedTickets = tickets.Where(ticket => ticket.ResolvedAtUtc is not null).ToList();
         var averageResolutionHours = resolvedTickets.Count == 0
             ? 0

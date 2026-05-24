@@ -6,4 +6,5 @@ public interface IUnitOfWork
     IUserRepository Users { get; }
     ITicketRepository Tickets { get; }
     ITicketCommentRepository TicketComments { get; }
+    IAuditLogRepository AuditLogs { get; set; }
 }
