@@ -4,6 +4,6 @@ namespace Helpdesk.Application.Repositories;
 
 public interface ITicketCommentRepository
 {
-    IReadOnlyList<TicketComment> GetByTicketId(Guid ticketId);
-    TicketComment Add(TicketComment comment);
+    Task<IReadOnlyList<TicketComment>> GetByTicketId(Guid ticketId);
+    Task<TicketComment> Add(TicketComment comment);
 }

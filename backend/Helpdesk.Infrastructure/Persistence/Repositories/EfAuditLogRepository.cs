@@ -13,18 +13,18 @@ public class EfAuditLogRepository : IAuditLogRepository
         _dbContext = dbContext;
     }
 
-    public void Add(AuditLog auditLog)
+    public async Task Add(AuditLog auditLog)
     {
         _dbContext.AuditLogs.Add(auditLog);
-        _dbContext.SaveChanges();
+        await _dbContext.SaveChangesAsync();
     }
 
-    public IReadOnlyList<AuditLog> GetByTenantId(Guid tenantId)
+    public async Task<IReadOnlyList<AuditLog>> GetByTenantId(Guid tenantId)
     {
-        return _dbContext.AuditLogs
+        return await _dbContext.AuditLogs
             .AsNoTracking()
             .Where(log => log.TenantId == tenantId)
             .OrderByDescending(log => log.CreatedAtUtc)
-            .ToList();
+            .ToListAsync();
     }
 }

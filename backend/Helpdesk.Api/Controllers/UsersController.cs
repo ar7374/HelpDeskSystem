@@ -25,11 +25,11 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpGet]
-    public IActionResult GetUsers()
+    public async Task<IActionResult> GetUsers()
     {
         var tenantId = _currentUserService.TenantId;
 
-        var response = _userService.GetUsers(tenantId);
+        var response = await _userService.GetUsers(tenantId);
 
         return StatusCode(response.StatusCode, response);
     }

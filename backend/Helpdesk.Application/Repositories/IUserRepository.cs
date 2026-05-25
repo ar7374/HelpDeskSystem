@@ -4,9 +4,9 @@ namespace Helpdesk.Application.Repositories;
 
 public interface IUserRepository
 {
-    IReadOnlyList<User> GetByTenantId(Guid tenantId);
-    User? GetById(Guid userId);
-    User? GetByEmail(string email, Guid tenantId);
-    User? GetByRefreshToken(string refreshToken);
-    void Update(User user);
+    Task<IReadOnlyList<User>> GetByTenantId(Guid tenantId);
+    Task<User?> GetById(Guid userId);
+    Task<User?> GetByEmail(string email, Guid tenantId);
+    Task<User?> GetByRefreshToken(string refreshToken);
+    Task Update(User user);
 }

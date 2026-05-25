@@ -15,16 +15,16 @@ public class EfTicketRepository : ITicketRepository
         _dbContext = dbContext;
     }
 
-    public IReadOnlyList<Ticket> GetByTenantId(Guid tenantId)
+    public async Task<IReadOnlyList<Ticket>> GetByTenantId(Guid tenantId)
     {
-        return _dbContext.Tickets
+        return await _dbContext.Tickets
             .AsNoTracking()
             .Where(t => t.TenantId == tenantId)
             .OrderByDescending(t => t.CreatedAtUtc)
-            .ToList();
+            .ToListAsync();
     }
 
-    public PaginatedListDto<Ticket> GetPaginated(SearchRequest<TicketSearchCriteria> request, Guid tenantId)
+    public async Task<PaginatedListDto<Ticket>> GetPaginated(SearchRequest<TicketSearchCriteria> request, Guid tenantId)
     {
         var query = _dbContext.Tickets
             .AsNoTracking()
@@ -50,19 +50,19 @@ public class EfTicketRepository : ITicketRepository
             }
         }
 
-        var totalRecords = query.LongCount();
+        var totalRecords = await query.LongCountAsync();
 
         var sortField = string.IsNullOrWhiteSpace(request.SortBy) ? "CreatedAtUtc" : request.SortBy;
         
         var items = request.SortDirection == SortDirection.Asc
-            ? query.OrderBy(t => EF.Property<object>(t, sortField))
+            ? await query.OrderBy(t => EF.Property<object>(t, sortField))
                    .Skip((request.PageNumber - 1) * request.PageSize)
                    .Take(request.PageSize)
-                   .ToList()
-            : query.OrderByDescending(t => EF.Property<object>(t, sortField))
+                   .ToListAsync()
+            : await query.OrderByDescending(t => EF.Property<object>(t, sortField))
                    .Skip((request.PageNumber - 1) * request.PageSize)
                    .Take(request.PageSize)
-                   .ToList();
+                   .ToListAsync();
 
         return new PaginatedListDto<Ticket>
         {
@@ -72,28 +72,28 @@ public class EfTicketRepository : ITicketRepository
         };
     }
 
-    public Ticket? GetById(Guid tenantId, Guid ticketId)
+    public async Task<Ticket?> GetById(Guid tenantId, Guid ticketId)
     {
-        return _dbContext.Tickets
-            .SingleOrDefault(ticket => ticket.TenantId == tenantId && ticket.Id == ticketId);
+        return await _dbContext.Tickets
+            .SingleOrDefaultAsync(ticket => ticket.TenantId == tenantId && ticket.Id == ticketId);
     }
 
-    public Ticket Add(Ticket ticket)
+    public async Task<Ticket> Add(Ticket ticket)
     {
         _dbContext.Tickets.Add(ticket);
-        _dbContext.SaveChanges();
+        await _dbContext.SaveChangesAsync();
         return ticket;
     }
 
-    public Ticket? Update(Ticket ticket)
+    public async Task<Ticket?> Update(Ticket ticket)
     {
         _dbContext.Tickets.Update(ticket);
-        _dbContext.SaveChanges();
+        await _dbContext.SaveChangesAsync();
         return ticket;
     }
 
-    public int CountByTenantId(Guid tenantId)
+    public async Task<int> CountByTenantId(Guid tenantId)
     {
-        return _dbContext.Tickets.Count(ticket => ticket.TenantId == tenantId);
+        return await _dbContext.Tickets.CountAsync(ticket => ticket.TenantId == tenantId);
     }
 }

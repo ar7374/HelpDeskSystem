@@ -13,7 +13,7 @@ public class AuditService
         _unitOfWork = unitOfWork;
     }
 
-    public void Log(
+    public async Task Log(
         Guid tenantId,
         Guid userId,
         string action,
@@ -33,11 +33,11 @@ public class AuditService
             CreatedAtUtc = DateTime.UtcNow
         };
 
-        _unitOfWork.AuditLogs.Add(auditLog);
+        await _unitOfWork.AuditLogs.Add(auditLog);
     }
-    public ApiResponse<IReadOnlyList<AuditLog>> GetLogs(Guid tenantId)
+    public async Task<ApiResponse<IReadOnlyList<AuditLog>>> GetLogs(Guid tenantId)
     {
-        var logs = _unitOfWork.AuditLogs.GetByTenantId(tenantId);
+        var logs = await _unitOfWork.AuditLogs.GetByTenantId(tenantId);
 
         return ApiResponse<IReadOnlyList<AuditLog>>.Success(
             "Audit logs fetched successfully",

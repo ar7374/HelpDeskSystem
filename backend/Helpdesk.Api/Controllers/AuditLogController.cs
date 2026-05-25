@@ -24,11 +24,11 @@ public sealed class AuditLogsController : ControllerBase
     }
 
     [HttpGet]
-    public IActionResult GetAuditLogs()
+    public async Task<IActionResult> GetAuditLogs()
     {
         var tenantId = _currentUserService.TenantId;
 
-        var response = _auditService.GetLogs(tenantId);
+        var response = await _auditService.GetLogs(tenantId);
 
         return StatusCode(response.StatusCode, response);
     }

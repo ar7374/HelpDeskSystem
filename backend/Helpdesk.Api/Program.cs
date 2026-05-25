@@ -26,6 +26,18 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<HelpdeskDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Redis Distributed Cache Configuration
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    options.ConfigurationOptions = new StackExchange.Redis.ConfigurationOptions 
+    { 
+        AbortOnConnectFail = false,
+        ConnectTimeout = 5000,
+        SyncTimeout = 5000
+    };
+});
+
 // JWT Configuration
 var jwtSecret = builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "HelpdeskAPI";
@@ -71,6 +83,7 @@ builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
 builder.Services.AddScoped<DatabaseSeeder>();
+builder.Services.AddScoped<ICacheService, CacheService>();
 
 
 var app = builder.Build();

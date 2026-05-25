@@ -18,9 +18,9 @@ public sealed class TenantsController : ControllerBase
     }
 
     [HttpGet]
-    public IActionResult GetTenants()
+    public async Task<IActionResult> GetTenants()
     {
-        var response = _tenantService.GetTenants();
+        var response = await _tenantService.GetTenants();
         return StatusCode(response.StatusCode, response);
     }
 }

@@ -4,21 +4,40 @@ using Helpdesk.Application.Repositories;
 using Helpdesk.Application.Requests;
 using Helpdesk.Application.Responses;
 using Helpdesk.Domain.Enums;
+using Microsoft.Extensions.Caching.Distributed;
+using System.Text.Json;
+
 
 namespace Helpdesk.Application.Services;
 
 public sealed class DashboardService
 {
+    private readonly IDistributedCache _cacheService;
     private readonly IUnitOfWork _unitOfWork;
 
-    public DashboardService(IUnitOfWork unitOfWork)
+    public DashboardService(IUnitOfWork unitOfWork, IDistributedCache cacheService)
     {
         _unitOfWork = unitOfWork;
+        _cacheService = cacheService;
     }
 
-    public ApiResponse<DashboardSummary> GetDashboard(Guid tenantId)
+    public async Task<ApiResponse<DashboardSummary>> GetDashboard(Guid tenantId)
     {
-        var tickets = _unitOfWork.Tickets.GetByTenantId(tenantId);
+        var cacheKey = $"dashboard_{tenantId}";
+        var cachedDashboard = await _cacheService.GetStringAsync(cacheKey);
+          if (!string.IsNullOrEmpty(cachedDashboard))
+        {
+            var cachedData =
+                JsonSerializer.Deserialize<DashboardSummary>(
+                    cachedDashboard);
+
+            return ApiResponse<DashboardSummary>.Success(
+                ResponseMessages.Success.DashboardFetched,
+                cachedData!);
+        }
+
+        var tickets = await _unitOfWork.Tickets.GetByTenantId(tenantId);
+
         var resolvedTickets = tickets.Where(ticket => ticket.ResolvedAtUtc is not null).ToList();
         var averageResolutionHours = resolvedTickets.Count == 0
             ? 0
@@ -33,7 +52,14 @@ public sealed class DashboardService
             AverageResolutionHours = Math.Round(averageResolutionHours, 1),
             TicketsByPriority = tickets.GroupBy(ticket => ticket.Priority).ToDictionary(group => group.Key, group => group.Count())
         };
-
+       await _cacheService.SetStringAsync(
+            cacheKey,
+            JsonSerializer.Serialize(dashboard),
+            new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow =
+                    TimeSpan.FromMinutes(5)
+            });
         return ApiResponse<DashboardSummary>.Success(ResponseMessages.Success.DashboardFetched, dashboard);
     }
 }

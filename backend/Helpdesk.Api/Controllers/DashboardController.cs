@@ -22,11 +22,11 @@ namespace Helpdesk.Api.Controllers;
     }
 
     [HttpGet]
-    public IActionResult GetDashboard()
+    public async Task<IActionResult> GetDashboard()
     {
         var tenantId = _currentUserService.TenantId;
 
-        var response = _dashboardService.GetDashboard(tenantId);
+        var response = await _dashboardService.GetDashboard(tenantId);
 
         return StatusCode(response.StatusCode, response);
     }

@@ -13,19 +13,19 @@ public class EfTicketCommentRepository : ITicketCommentRepository
         _dbContext = dbContext;
     }
 
-    public IReadOnlyList<TicketComment> GetByTicketId(Guid ticketId)
+    public async Task<IReadOnlyList<TicketComment>> GetByTicketId(Guid ticketId)
     {
-        return _dbContext.TicketComments
+        return await _dbContext.TicketComments
             .AsNoTracking()
             .Where(comment => comment.TicketId == ticketId)
             .OrderBy(comment => comment.CreatedAtUtc)
-            .ToList();
+            .ToListAsync();
     }
 
-    public TicketComment Add(TicketComment comment)
+    public async Task<TicketComment> Add(TicketComment comment)
     {
         _dbContext.TicketComments.Add(comment);
-        _dbContext.SaveChanges();
+        await _dbContext.SaveChangesAsync();
         return comment;
     }
 }

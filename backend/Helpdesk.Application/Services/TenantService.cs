@@ -14,9 +14,9 @@ public sealed class TenantService
         _unitOfWork = unitOfWork;
     }
 
-    public ApiResponse<IReadOnlyList<Tenant>> GetTenants()
+    public async Task<ApiResponse<IReadOnlyList<Tenant>>> GetTenants()
     {
-        var tenants = _unitOfWork.Tenants.GetAll();
+        var tenants = await _unitOfWork.Tenants.GetAll();
         return ApiResponse<IReadOnlyList<Tenant>>.Success(ResponseMessages.Success.TenantsFetched, tenants);
     }
 }

@@ -20,33 +20,33 @@ public sealed class TicketsController : ControllerBase
 
     [HttpPost(ApiRoutes.TenantTickets)]
     [Authorize(Roles = RoleConstants.AllRoles)]
-    public IActionResult GetTickets(
+    public async Task<IActionResult> GetTickets(
         Guid tenantId,
         [FromBody] SearchRequest<TicketSearchCriteria> request)
     {
-        var response = _ticketService.GetTicketsPaginated(request, tenantId);
+        var response = await _ticketService.GetTicketsPaginated(request, tenantId);
         return StatusCode(response.StatusCode, response);
     }
 
     [HttpGet(ApiRoutes.TenantTicketById)]
     [Authorize(Roles = RoleConstants.AllRoles)]
-    public IActionResult GetTicket([FromRoute] TicketRouteRequest request)
+    public async Task<IActionResult> GetTicket([FromRoute] TicketRouteRequest request)
     {
-        var response = _ticketService.GetTicket(request);
+        var response = await _ticketService.GetTicket(request);
         return StatusCode(response.StatusCode, response);
     }
 
     [HttpPost(ApiRoutes.Tickets)]
     [Authorize(Roles = RoleConstants.AdminAndCustomer)]
-    public IActionResult CreateTicket(CreateTicketRequest request)
+    public async Task<IActionResult> CreateTicket(CreateTicketRequest request)
     {
-        var response = _ticketService.CreateTicket(request);
+        var response = await _ticketService.CreateTicket(request);
         return StatusCode(response.StatusCode, response);
     }
 
     [HttpPut(ApiRoutes.TenantTicketById)]
     [Authorize(Roles = RoleConstants.AdminAndAgent)]
-    public IActionResult UpdateTicket([FromRoute] TicketRouteRequest route, UpdateTicketRequest request)
+    public async Task<IActionResult> UpdateTicket([FromRoute] TicketRouteRequest route, UpdateTicketRequest request)
     {
         var command = new UpdateTicketCommand
         {
@@ -54,13 +54,13 @@ public sealed class TicketsController : ControllerBase
             Request = request
         };
 
-        var response = _ticketService.UpdateTicket(command);
+        var response = await _ticketService.UpdateTicket(command);
         return StatusCode(response.StatusCode, response);
     }
 
     [HttpPost(ApiRoutes.TicketComments)]
     [Authorize(Roles = RoleConstants.AllRoles)]
-    public IActionResult AddComment([FromRoute] TicketRouteRequest route, AddCommentRequest request)
+    public async Task<IActionResult> AddComment([FromRoute] TicketRouteRequest route, AddCommentRequest request)
     {
         var command = new AddCommentCommand
         {
@@ -68,7 +68,7 @@ public sealed class TicketsController : ControllerBase
             Request = request
         };
 
-        var response = _ticketService.AddComment(command);
+        var response = await _ticketService.AddComment(command);
         return StatusCode(response.StatusCode, response);
     }
 }

@@ -13,40 +13,40 @@ public class EfUserRepository : IUserRepository
         _dbContext = dbContext;
     }
 
-    public IReadOnlyList<User> GetByTenantId(Guid tenantId)
+    public async Task<IReadOnlyList<User>> GetByTenantId(Guid tenantId)
     {
-        return _dbContext.Users
+        return await _dbContext.Users
             .AsNoTracking()
             .Where(user => user.TenantId == tenantId)
             .OrderBy(user => user.Role)
             .ThenBy(user => user.FullName)
-            .ToList();
+            .ToListAsync();
     }
 
-    public User? GetById(Guid userId)
+    public async Task<User?> GetById(Guid userId)
     {
-        return _dbContext.Users
+        return await _dbContext.Users
             .AsNoTracking()
-            .SingleOrDefault(user => user.Id == userId);
+            .SingleOrDefaultAsync(user => user.Id == userId);
     }
 
-    public User? GetByEmail(string email, Guid tenantId)
+    public async Task<User?> GetByEmail(string email, Guid tenantId)
     {
-        return _dbContext.Users
+        return await _dbContext.Users
             .AsNoTracking()
-            .SingleOrDefault(user => user.Email == email && user.TenantId == tenantId);
+            .SingleOrDefaultAsync(user => user.Email == email && user.TenantId == tenantId);
     }
 
-    public User? GetByRefreshToken(string refreshToken)
+    public async Task<User?> GetByRefreshToken(string refreshToken)
     {
-        return _dbContext.Users
+        return await _dbContext.Users
             .AsNoTracking()
-            .SingleOrDefault(user => user.RefreshToken == refreshToken);
+            .SingleOrDefaultAsync(user => user.RefreshToken == refreshToken);
     }
 
-    public void Update(User user)
+    public async Task Update(User user)
     {
         _dbContext.Users.Update(user);
-        _dbContext.SaveChanges();
+        await _dbContext.SaveChangesAsync();
     }
 }

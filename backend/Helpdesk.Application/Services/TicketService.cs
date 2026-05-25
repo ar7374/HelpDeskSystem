@@ -6,6 +6,7 @@ using Helpdesk.Application.Requests;
 using Helpdesk.Application.Responses;
 using Helpdesk.Domain.Entities;
 using Helpdesk.Domain.Enums;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace Helpdesk.Application.Services;
 
@@ -14,26 +15,31 @@ public sealed class TicketService
     private readonly IUnitOfWork _unitOfWork;
     private readonly AuditService _auditService;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IDistributedCache _cache;
 
     public TicketService(
         IUnitOfWork unitOfWork,
         AuditService auditService,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IDistributedCache cache)
     {
         _unitOfWork = unitOfWork;
         _auditService = auditService;
         _currentUserService = currentUserService;
+        _cache = cache;
     }
 
-    public ApiResponse<PaginatedListDto<TicketListItem>> GetTicketsPaginated(
+    public async Task<ApiResponse<PaginatedListDto<TicketListItem>>> GetTicketsPaginated(
         SearchRequest<TicketSearchCriteria> request,
         Guid tenantId)
     {
-        var paginatedTickets = _unitOfWork.Tickets.GetPaginated(request, tenantId);
+        var paginatedTickets = await _unitOfWork.Tickets.GetPaginated(request, tenantId);
 
-        var items = paginatedTickets.Data
-            .Select(ToListItem)
-            .ToList();
+        var items = new List<TicketListItem>();
+        foreach (var ticket in paginatedTickets.Data)
+        {
+            items.Add(await ToListItem(ticket));
+        }
 
         var result = new PaginatedListDto<TicketListItem>
         {
@@ -47,9 +53,9 @@ public sealed class TicketService
             result);
     }
 
-    public ApiResponse<TicketDetails> GetTicket(TicketRouteRequest request)
+    public async Task<ApiResponse<TicketDetails>> GetTicket(TicketRouteRequest request)
     {
-        var ticket = _unitOfWork.Tickets.GetById(
+        var ticket = await _unitOfWork.Tickets.GetById(
             request.TenantId,
             request.TicketId);
 
@@ -61,10 +67,10 @@ public sealed class TicketService
 
         return ApiResponse<TicketDetails>.Success(
             ResponseMessages.Success.TicketFetched,
-            ToDetails(ticket));
+            await ToDetails(ticket));
     }
 
-    public ApiResponse<TicketDetails> CreateTicket(CreateTicketRequest request)
+    public async Task<ApiResponse<TicketDetails>> CreateTicket(CreateTicketRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Title) ||
             string.IsNullOrWhiteSpace(request.Description))
@@ -73,7 +79,7 @@ public sealed class TicketService
                 ResponseMessages.Error.TitleAndDescriptionRequired);
         }
 
-        var ticketCount = _unitOfWork.Tickets.CountByTenantId(request.TenantId);
+        var ticketCount = await _unitOfWork.Tickets.CountByTenantId(request.TenantId);
 
         var now = DateTime.UtcNow;
 
@@ -91,24 +97,24 @@ public sealed class TicketService
             SlaDueAtUtc = now.AddHours(GetSlaHours(request.Priority))
         };
 
-        _unitOfWork.Tickets.Add(ticket);
+        await _unitOfWork.Tickets.Add(ticket);
 
-        _auditService.Log(
+        await _auditService.Log(
             request.TenantId,
             _currentUserService.UserId,
             "Create",
             "Ticket",
             ticket.Id,
             $"Created ticket {ticket.TicketNumber}");
-
+        _cache.Remove($"dashboard_{request.TenantId}");
         return ApiResponse<TicketDetails>.Created(
             ResponseMessages.Success.TicketCreated,
-            ToDetails(ticket));
+            await ToDetails(ticket));
     }
 
-    public ApiResponse<TicketDetails> UpdateTicket(UpdateTicketCommand command)
+    public async Task<ApiResponse<TicketDetails>> UpdateTicket(UpdateTicketCommand command)
     {
-        var ticket = _unitOfWork.Tickets.GetById(
+        var ticket = await _unitOfWork.Tickets.GetById(
             command.Route.TenantId,
             command.Route.TicketId);
 
@@ -129,22 +135,22 @@ public sealed class TicketService
         ticket.AgentId = command.Request.AgentId;
         ticket.ResolvedAtUtc = resolvedAt;
 
-        _unitOfWork.Tickets.Update(ticket);
+        await _unitOfWork.Tickets.Update(ticket);
 
-        _auditService.Log(
+        await _auditService.Log(
             command.Route.TenantId,
             _currentUserService.UserId,
             "Update",
             "Ticket",
             ticket.Id,
             $"Changed ticket {ticket.TicketNumber} status from {oldStatus} to {ticket.Status}");
-
+        _cache.Remove($"dashboard_{command.Route.TenantId}");
         return ApiResponse<TicketDetails>.Success(
             ResponseMessages.Success.TicketUpdated,
-            ToDetails(ticket));
+            await ToDetails(ticket));
     }
 
-    public ApiResponse<TicketDetails> AddComment(AddCommentCommand command)
+    public async Task<ApiResponse<TicketDetails>> AddComment(AddCommentCommand command)
     {
         if (string.IsNullOrWhiteSpace(command.Request.Body))
         {
@@ -152,7 +158,7 @@ public sealed class TicketService
                 ResponseMessages.Error.CommentBodyRequired);
         }
 
-        var ticket = _unitOfWork.Tickets.GetById(
+        var ticket = await _unitOfWork.Tickets.GetById(
             command.Route.TenantId,
             command.Route.TicketId);
 
@@ -171,9 +177,9 @@ public sealed class TicketService
             CreatedAtUtc = DateTime.UtcNow
         };
 
-        _unitOfWork.TicketComments.Add(comment);
+        await _unitOfWork.TicketComments.Add(comment);
 
-        _auditService.Log(
+        await _auditService.Log(
             command.Route.TenantId,
             _currentUserService.UserId,
             "Comment",
@@ -183,16 +189,16 @@ public sealed class TicketService
 
         return ApiResponse<TicketDetails>.Success(
             ResponseMessages.Success.CommentAdded,
-            ToDetails(ticket));
+            await ToDetails(ticket));
     }
 
-    private TicketListItem ToListItem(Ticket ticket)
+    private async Task<TicketListItem> ToListItem(Ticket ticket)
     {
-        var customer = _unitOfWork.Users.GetById(ticket.CustomerId)!;
+        var customer = (await _unitOfWork.Users.GetById(ticket.CustomerId))!;
 
         var agent = ticket.AgentId is null
             ? null
-            : _unitOfWork.Users.GetById(ticket.AgentId.Value);
+            : await _unitOfWork.Users.GetById(ticket.AgentId.Value);
 
         return new TicketListItem
         {
@@ -208,15 +214,15 @@ public sealed class TicketService
         };
     }
 
-    private TicketDetails ToDetails(Ticket ticket)
+    private async Task<TicketDetails> ToDetails(Ticket ticket)
     {
-        var customer = _unitOfWork.Users.GetById(ticket.CustomerId)!;
+        var customer = (await _unitOfWork.Users.GetById(ticket.CustomerId))!;
 
         var agent = ticket.AgentId is null
             ? null
-            : _unitOfWork.Users.GetById(ticket.AgentId.Value);
+            : await _unitOfWork.Users.GetById(ticket.AgentId.Value);
 
-        var comments = _unitOfWork.TicketComments.GetByTicketId(ticket.Id);
+        var comments = await _unitOfWork.TicketComments.GetByTicketId(ticket.Id);
 
         return new TicketDetails
         {

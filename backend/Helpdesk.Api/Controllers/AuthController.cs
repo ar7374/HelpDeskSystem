@@ -16,16 +16,16 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public IActionResult Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        var response = _authService.Login(request);
+        var response = await _authService.Login(request);
         return StatusCode(response.StatusCode, response);
     }
 
     [HttpPost("refresh")]
-    public IActionResult Refresh([FromBody] RefreshTokenRequest request)
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
     {
-        var response = _authService.RefreshToken(request);
+        var response = await _authService.RefreshToken(request);
         return StatusCode(response.StatusCode, response);
     }
 }

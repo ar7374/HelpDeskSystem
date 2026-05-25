@@ -26,7 +26,7 @@ public class AuthService
         _unitOfWork = unitOfWork;
     }
 
-    public ApiResponse<LoginResponse> Login(LoginRequest request)
+    public async Task<ApiResponse<LoginResponse>> Login(LoginRequest request)
     {
         if (request.TenantId == Guid.Empty || string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
         {
@@ -38,7 +38,7 @@ public class AuthService
             };
         }
 
-        var user = _userRepository.GetByEmail(request.Email, request.TenantId);
+        var user = await _userRepository.GetByEmail(request.Email, request.TenantId);
 
         if (user == null || !_passwordHashService.VerifyPassword(request.Password, user.PasswordHash))
         {
@@ -57,7 +57,7 @@ public class AuthService
         // Save refresh token to user
         user.RefreshToken = refreshToken;
         user.RefreshTokenExpiryTime = refreshTokenExpiry;
-        _unitOfWork.Users.Update(user);
+        await _unitOfWork.Users.Update(user);
 
         return new ApiResponse<LoginResponse>
         {
@@ -80,7 +80,7 @@ public class AuthService
         };
     }
 
-    public ApiResponse<RefreshTokenResponse> RefreshToken(RefreshTokenRequest request)
+    public async Task<ApiResponse<RefreshTokenResponse>> RefreshToken(RefreshTokenRequest request)
     {
         if (string.IsNullOrEmpty(request.RefreshToken))
         {
@@ -92,7 +92,7 @@ public class AuthService
             };
         }
 
-        var user = _userRepository.GetByRefreshToken(request.RefreshToken);
+        var user = await _userRepository.GetByRefreshToken(request.RefreshToken);
 
         if (user == null)
         {
@@ -121,7 +121,7 @@ public class AuthService
         // Update refresh token
         user.RefreshToken = newRefreshToken;
         user.RefreshTokenExpiryTime = refreshTokenExpiry;
-        _unitOfWork.Users.Update(user);
+        await _unitOfWork.Users.Update(user);
 
         return new ApiResponse<RefreshTokenResponse>
         {

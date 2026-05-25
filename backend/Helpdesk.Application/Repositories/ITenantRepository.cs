@@ -4,5 +4,5 @@ namespace Helpdesk.Application.Repositories;
 
 public interface ITenantRepository
 {
-    IReadOnlyList<Tenant> GetAll();
+    Task<IReadOnlyList<Tenant>> GetAll();
 }

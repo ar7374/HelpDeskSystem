@@ -6,10 +6,10 @@ namespace Helpdesk.Application.Repositories;
 
 public interface ITicketRepository
 {
-    IReadOnlyList<Ticket> GetByTenantId(Guid tenantId);
-    PaginatedListDto<Ticket> GetPaginated(SearchRequest<TicketSearchCriteria> request, Guid tenantId);
-    Ticket? GetById(Guid tenantId, Guid ticketId);
-    Ticket Add(Ticket ticket);
-    Ticket? Update(Ticket ticket);
-    int CountByTenantId(Guid tenantId);
+    Task<IReadOnlyList<Ticket>> GetByTenantId(Guid tenantId);
+    Task<PaginatedListDto<Ticket>> GetPaginated(SearchRequest<TicketSearchCriteria> request, Guid tenantId);
+    Task<Ticket?> GetById(Guid tenantId, Guid ticketId);
+    Task<Ticket> Add(Ticket ticket);
+    Task<Ticket?> Update(Ticket ticket);
+    Task<int> CountByTenantId(Guid tenantId);
 }

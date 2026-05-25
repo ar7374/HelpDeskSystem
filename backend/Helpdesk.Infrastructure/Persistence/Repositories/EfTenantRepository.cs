@@ -13,11 +13,11 @@ public class EfTenantRepository : ITenantRepository
         _dbContext = dbContext;
     }
 
-    public IReadOnlyList<Tenant> GetAll()
+    public async Task<IReadOnlyList<Tenant>> GetAll()
     {
-        return _dbContext.Tenants
+        return await _dbContext.Tenants
             .AsNoTracking()
             .OrderBy(tenant => tenant.Name)
-            .ToList();
+            .ToListAsync();
     }
 }

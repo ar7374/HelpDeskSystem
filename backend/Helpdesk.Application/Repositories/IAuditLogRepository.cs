@@ -4,7 +4,7 @@ namespace Helpdesk.Application.Repositories;
 
 public interface IAuditLogRepository
 {
-    void Add(AuditLog auditLog);
+    Task Add(AuditLog auditLog);
 
-    IReadOnlyList<AuditLog> GetByTenantId(Guid tenantId);
+    Task<IReadOnlyList<AuditLog>> GetByTenantId(Guid tenantId);
 }

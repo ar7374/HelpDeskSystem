@@ -14,9 +14,9 @@ public sealed class UserService
         _unitOfWork = unitOfWork;
     }
 
-    public ApiResponse<IReadOnlyList<User>> GetUsers(Guid tenantId)
+    public async Task<ApiResponse<IReadOnlyList<User>>> GetUsers(Guid tenantId)
     {
-        var users = _unitOfWork.Users.GetByTenantId(tenantId);
+        var users = await _unitOfWork.Users.GetByTenantId(tenantId);
         return ApiResponse<IReadOnlyList<User>>.Success(ResponseMessages.Success.UsersFetched, users);
     }
 }
