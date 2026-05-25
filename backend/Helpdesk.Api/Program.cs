@@ -1,5 +1,7 @@
 using Helpdesk.Api.Context;
+using Helpdesk.Api.Hubs;
 using Helpdesk.Api.Middleware;
+using Helpdesk.Api.Services;
 using Helpdesk.Application.Common;
 using Helpdesk.Application.Repositories;
 using Helpdesk.Application.Services;
@@ -15,12 +17,14 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
         policy.WithOrigins("http://localhost:5173")
             .AllowAnyHeader()
-            .AllowAnyMethod());
+            .AllowAnyMethod()
+            .AllowCredentials());
 });
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<HelpdeskDbContext>(options =>
@@ -62,7 +66,7 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
         };
     });
-
+builder.Services.AddSignalR();
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantRepository, EfTenantRepository>();
@@ -76,14 +80,13 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<TicketService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<AuditService>();
-builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<ISignalRNotificationService,SignalRNotificationService>();
+ builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IPasswordHashService, PasswordHashService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IAuditLogRepository, EfAuditLogRepository>();
 builder.Services.AddScoped<DatabaseSeeder>();
-builder.Services.AddScoped<ICacheService, CacheService>();
 
 
 var app = builder.Build();
@@ -105,5 +108,6 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<DashboardHub>("/hubs/dashboard");
 
 app.Run();

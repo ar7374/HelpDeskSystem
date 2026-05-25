@@ -8,6 +8,7 @@ using Helpdesk.Domain.Entities;
 using Helpdesk.Domain.Enums;
 using Microsoft.Extensions.Caching.Distributed;
 
+using Microsoft.AspNetCore.SignalR;
 namespace Helpdesk.Application.Services;
 
 public sealed class TicketService
@@ -16,17 +17,21 @@ public sealed class TicketService
     private readonly AuditService _auditService;
     private readonly ICurrentUserService _currentUserService;
     private readonly IDistributedCache _cache;
+    private readonly ISignalRNotificationService _hubContext;
 
     public TicketService(
         IUnitOfWork unitOfWork,
         AuditService auditService,
         ICurrentUserService currentUserService,
-        IDistributedCache cache)
+        IDistributedCache cache,
+        ISignalRNotificationService hubContext
+        )
     {
         _unitOfWork = unitOfWork;
         _auditService = auditService;
         _currentUserService = currentUserService;
         _cache = cache;
+        _hubContext = hubContext;
     }
 
     public async Task<ApiResponse<PaginatedListDto<TicketListItem>>> GetTicketsPaginated(
@@ -106,7 +111,8 @@ public sealed class TicketService
             "Ticket",
             ticket.Id,
             $"Created ticket {ticket.TicketNumber}");
-        _cache.Remove($"dashboard_{request.TenantId}");
+        await _cache.RemoveAsync($"dashboard_{request.TenantId}");
+        await _hubContext.NotifyTicketCreated(request.TenantId, ticket);
         return ApiResponse<TicketDetails>.Created(
             ResponseMessages.Success.TicketCreated,
             await ToDetails(ticket));
@@ -144,7 +150,8 @@ public sealed class TicketService
             "Ticket",
             ticket.Id,
             $"Changed ticket {ticket.TicketNumber} status from {oldStatus} to {ticket.Status}");
-        _cache.Remove($"dashboard_{command.Route.TenantId}");
+       await _cache.RemoveAsync($"dashboard_{command.Route.TenantId}");
+        await _hubContext.NotifyTicketUpdated(command.Route.TenantId, ticket);
         return ApiResponse<TicketDetails>.Success(
             ResponseMessages.Success.TicketUpdated,
             await ToDetails(ticket));
