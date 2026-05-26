@@ -1,0 +1,158 @@
+# =========================
+
+# Build / Publish
+
+# =========================
+
+backend/Helpdesk.Api/bin/
+obj/
+publish/
+
+# =========================
+
+# Visual Studio / VS Code
+
+# =========================
+
+.vs/
+.vscode/
+.idea/
+
+# =========================
+
+# User-specific files
+
+# =========================
+
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# =========================
+
+# ASP.NET Core
+
+# =========================
+
+appsettings.Development.json
+secrets.json
+
+# =========================
+
+# Logs
+
+# =========================
+
+*.log
+logs/
+
+# =========================
+
+# Node / React
+
+# =========================
+
+node_modules/
+dist/
+build/
+
+# =========================
+
+# Environment files
+
+# =========================
+
+.env
+.env.local
+.env.development.local
+.env.production.local
+
+# =========================
+
+# Docker
+
+# =========================
+
+docker-compose.override.yml
+
+# =========================
+
+# Database / Local Storage
+
+# =========================
+
+*.db
+*.db-shm
+*.db-wal
+
+# =========================
+
+# Redis
+
+# =========================
+
+dump.rdb
+
+# =========================
+
+# Coverage / Test Output
+
+# =========================
+
+coverage/
+TestResults/
+
+# =========================
+
+# OS Files
+
+# =========================
+
+.DS_Store
+Thumbs.db
+
+# =========================
+
+# Temporary files
+
+# =========================
+
+tmp/
+temp/
+
+# =========================
+
+# NuGet
+
+# =========================
+
+*.nupkg
+packages/
+
+# =========================
+
+# JetBrains Rider
+
+# =========================
+
+_ReSharper*/
+*.DotSettings.user
+
+# =========================
+
+# Generated Frontend Files
+
+# =========================
+
+frontend/node_modules/
+frontend/dist/
+
+# =========================
+
+# Optional
+
+# =========================
+
+*.cache
+*.pid
