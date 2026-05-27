@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { ApiResponse, RefreshTokenResponse } from '../types';
 
-const BASE_URL = 'https://localhost:7167'; // Matches Program.cs SSL port
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:7167';
 
 export const axiosClient = axios.create({
   baseURL: BASE_URL,

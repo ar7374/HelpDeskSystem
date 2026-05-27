@@ -9,4 +9,5 @@ public interface IUserRepository
     Task<User?> GetByEmail(string email, Guid tenantId);
     Task<User?> GetByRefreshToken(string refreshToken);
     Task Update(User user);
+    Task<User> Add(User user);
 }

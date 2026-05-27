@@ -34,16 +34,30 @@ public class DatabaseSeeder
         var secondTicketId = Guid.Parse("eb33c753-f08a-45de-9542-f4193dbb198a");
         var now = DateTime.UtcNow;
 
+        var superTenantId = Guid.Parse("9f8e7d6c-5b4a-3f2e-1d0c-9b8a7f6e5d4c");
+        var superAdminUserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
         _dbContext.Tenants.Add(new Tenant
         {
             Id = tenantId,
             Name = "Acme Cloud Support",
             Slug = "acme-cloud",
+            Status = TenantStatus.Approved,
             CreatedAtUtc = now.AddDays(-60)
+        });
+
+        _dbContext.Tenants.Add(new Tenant
+        {
+            Id = superTenantId,
+            Name = "Super System Admin",
+            Slug = "super-admin",
+            Status = TenantStatus.Approved,
+            CreatedAtUtc = now.AddDays(-100)
         });
 
         _dbContext.Users.AddRange(
         [
+            new User { Id = superAdminUserId, TenantId = superTenantId, FullName = "Super Admin", Email = "super@support.test", PasswordHash = _passwordHashService.HashPassword("Super@123"), Role = UserRole.SuperAdmin, CreatedAtUtc = now.AddDays(-100) },
             new User { Id = adminId, TenantId = tenantId, FullName = "Nisha Admin", Email = "nisha@acme.test", PasswordHash = _passwordHashService.HashPassword("Admin@123"), Role = UserRole.Admin, CreatedAtUtc = now.AddDays(-45) },
             new User { Id = agentId, TenantId = tenantId, FullName = "Rahul Agent", Email = "rahul@acme.test", PasswordHash = _passwordHashService.HashPassword("Agent@123"), Role = UserRole.Agent, CreatedAtUtc = now.AddDays(-42) },
             new User { Id = customerId, TenantId = tenantId, FullName = "Priya Customer", Email = "priya@client.test", PasswordHash = _passwordHashService.HashPassword("Customer@123"), Role = UserRole.Customer, CreatedAtUtc = now.AddDays(-30) },

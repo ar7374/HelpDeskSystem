@@ -7,6 +7,8 @@ import { AppShell } from './components/AppShell';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { TicketsPage } from './features/tickets/TicketsPage';
 import { AuditLogsPage } from './features/audit-logs/AuditLogsPage';
+import { UsersPage } from './features/users/UsersPage';
+import { CompanyApprovalsPage } from './features/superadmin/CompanyApprovalsPage';
 
 // Simple direct full-page wrapper for Create Incident view
 import { CreateTicketDrawer } from './features/tickets/CreateTicketDrawer';
@@ -28,6 +30,8 @@ export const App: React.FC = () => {
     if (isAuthenticated && user) {
       if (user.role === 'Customer') {
         setCurrentView('tickets'); // Customers default to tickets
+      } else if (user.role === 'SuperAdmin') {
+        setCurrentView('company-approvals'); // SuperAdmins default to approvals list
       } else {
         setCurrentView('dashboard'); // Agents/Admins default to dashboard
       }
@@ -67,6 +71,8 @@ export const App: React.FC = () => {
         {currentView === 'dashboard' && <DashboardPage />}
         {currentView === 'tickets' && <TicketsPage />}
         {currentView === 'audit-logs' && <AuditLogsPage />}
+        {currentView === 'users' && <UsersPage />}
+        {currentView === 'company-approvals' && <CompanyApprovalsPage />}
         {currentView === 'create-ticket' && (
           <CreateTicketDrawer 
             open={true} 

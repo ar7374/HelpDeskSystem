@@ -20,4 +20,29 @@ public class EfTenantRepository : ITenantRepository
             .OrderBy(tenant => tenant.Name)
             .ToListAsync();
     }
+
+    public async Task<Tenant?> GetBySlug(string slug)
+    {
+        return await _dbContext.Tenants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(tenant => tenant.Slug == slug);
+    }
+
+    public async Task<Tenant?> GetById(Guid id)
+    {
+        return await _dbContext.Tenants.FindAsync(id);
+    }
+
+    public async Task<Tenant> Add(Tenant tenant)
+    {
+        _dbContext.Tenants.Add(tenant);
+        await _dbContext.SaveChangesAsync();
+        return tenant;
+    }
+
+    public async Task Update(Tenant tenant)
+    {
+        _dbContext.Tenants.Update(tenant);
+        await _dbContext.SaveChangesAsync();
+    }
 }

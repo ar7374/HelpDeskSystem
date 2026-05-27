@@ -2,8 +2,6 @@ import React, { useEffect } from 'react';
 import { 
   Box, 
   Grid, 
-  Card, 
-  CardContent, 
   Typography, 
   LinearProgress, 
   Alert, 
@@ -20,6 +18,8 @@ import {
 import { useAppDispatch, useAppSelector } from '../../store';
 import { loadDashboardThunk } from './dashboardThunks';
 import { createDashboardConnection } from '../../shared/api/signalrService';
+import { PageHeader } from '../../components/PageHeader';
+import { StatsCard } from '../../components/StatsCard';
 
 export const DashboardPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -137,58 +137,21 @@ export const DashboardPage: React.FC = () => {
   return (
     <Box sx={{ flexGrow: 1 }}>
       {/* Welcome banner */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h1" sx={{ fontSize: '1.85rem', fontWeight: 800 }}>
-          Welcome back, {user?.fullName}!
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Here is what's happening with support operations in Acme Cloud Support.
-        </Typography>
-      </Box>
+      <PageHeader
+        title={`Welcome back, ${user?.fullName}!`}
+        subtitle="Here is what's happening with support operations in Acme Cloud Support."
+      />
 
       {/* Grid count cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={3} sx={{ mb: 4, alignItems: 'stretch' }}>
         {statCards.map((card) => (
-          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={card.title}>
-            <Card 
-              sx={{ 
-                position: 'relative',
-                overflow: 'hidden',
-                animation: card.isAlarm ? 'pulse 2s infinite' : 'none',
-                '@keyframes pulse': {
-                  '0%': { boxShadow: '0 0 0 0px rgba(239, 68, 68, 0.4)' },
-                  '70%': { boxShadow: '0 0 0 10px rgba(239, 68, 68, 0)' },
-                  '100%': { boxShadow: '0 0 0 0px rgba(239, 68, 68, 0)' }
-                },
-                ...(card.isAlarm && {
-                  borderColor: 'error.main',
-                  bgcolor: 'rgba(239, 68, 68, 0.03)'
-                })
-              }}
-            >
-              <CardContent sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mb: 1 }}>
-                    {card.title}
-                  </Typography>
-                  <Typography variant="h1" sx={{ fontSize: '2.25rem', fontWeight: 800, lineHeight: 1 }}>
-                    {card.count}
-                  </Typography>
-                </Box>
-                <Box 
-                  sx={{ 
-                    p: 1.5, 
-                    borderRadius: 3, 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    bgcolor: card.isAlarm ? 'rgba(239, 68, 68, 0.1)' : 'action.hover'
-                  }}
-                >
-                  {card.icon}
-                </Box>
-              </CardContent>
-            </Card>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }} key={card.title} sx={{ display: 'flex' }}>
+            <StatsCard
+              title={card.title}
+              count={card.count}
+              icon={card.icon}
+              isAlarm={card.isAlarm}
+            />
           </Grid>
         ))}
       </Grid>

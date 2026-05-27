@@ -1,6 +1,6 @@
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 
-const BASE_URL = 'https://localhost:7167'; // Matches axiosClient.ts and Program.cs SSL port
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:7167';
 
 /**
  * Creates and configures a SignalR HubConnection for the Dashboard Hub.

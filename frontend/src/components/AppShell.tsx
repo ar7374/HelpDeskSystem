@@ -13,7 +13,6 @@ import {
   ListItemIcon, 
   ListItemText, 
   Avatar, 
-  Chip,
   Tooltip,
   useTheme
 } from '@mui/material';
@@ -29,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '../store';
 import { logout } from '../features/auth/authSlice';
+import { RoleChip } from './RoleChip';
 
 const drawerWidth = 260;
 
@@ -83,6 +83,18 @@ export const AppShell: React.FC<AppShellProps> = ({
       icon: <AuditIcon />, 
       allowedRoles: ['Admin'] 
     },
+    { 
+      text: 'User Management', 
+      view: 'users', 
+      icon: <ProfileIcon />, 
+      allowedRoles: ['Admin'] 
+    },
+    { 
+      text: 'Company Approvals', 
+      view: 'company-approvals', 
+      icon: <ProfileIcon />, 
+      allowedRoles: ['SuperAdmin'] 
+    },
   ];
 
   return (
@@ -105,6 +117,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             {currentView === 'tickets' && 'Support Tickets Command Center'}
             {currentView === 'create-ticket' && 'New Service Request'}
             {currentView === 'audit-logs' && 'Administrative Audit Logs'}
+            {currentView === 'company-approvals' && 'SaaS Company Registration Board'}
           </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -126,10 +139,9 @@ export const AppShell: React.FC<AppShellProps> = ({
                 <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
                   {user?.fullName}
                 </Typography>
-                <Chip 
-                  label={roleName} 
+                <RoleChip 
+                  role={roleName} 
                   size="small" 
-                  color={roleName === 'Admin' ? 'error' : roleName === 'Agent' ? 'primary' : 'success'}
                   sx={{ height: 16, fontSize: '0.65rem', mt: 0.2, fontWeight: 700 }}
                 />
               </Box>
