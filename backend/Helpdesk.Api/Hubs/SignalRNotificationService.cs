@@ -7,19 +7,23 @@ namespace Helpdesk.Api.Services;
 public class SignalRNotificationService
     : ISignalRNotificationService
 {
-    private readonly IHubContext<DashboardHub> _hubContext;
+
+    private readonly IHubContext<DashboardHub> _dashboardHubContext;
+    private readonly IHubContext<CommentHub> _commentHubContext;
 
     public SignalRNotificationService(
-        IHubContext<DashboardHub> hubContext)
+        IHubContext<DashboardHub> dashboardHubContext,
+        IHubContext<CommentHub> commentHubContext)
     {
-        _hubContext = hubContext;
+        _dashboardHubContext = dashboardHubContext;
+        _commentHubContext = commentHubContext;
     }
 
     public async Task NotifyTicketCreated(
         Guid tenantId,
         object data)
     {
-        await _hubContext.Clients
+        await _dashboardHubContext.Clients
             .Group($"tenant_{tenantId}")
             .SendAsync("TicketCreated", data);
     }
@@ -28,7 +32,7 @@ public class SignalRNotificationService
         Guid tenantId,
         object data)
     {
-        await _hubContext.Clients
+        await _dashboardHubContext.Clients
             .Group($"tenant_{tenantId}")
             .SendAsync("TicketUpdated", data);
     }
@@ -38,7 +42,7 @@ public class SignalRNotificationService
         Guid ticketId,
         object data)
     {
-        await _hubContext.Clients
+        await _commentHubContext.Clients
             .Group($"ticket_{ticketId}")
             .SendAsync("CommentAdded", data);
     }

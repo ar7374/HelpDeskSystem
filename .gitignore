@@ -4,9 +4,13 @@
 
 # =========================
 
-backend/Helpdesk.Api/bin/
-obj/
-publish/
+[Bb]in/
+[Oo]bj/
+[Pp]ublish/
+*.dll
+*.pdb
+*.exe
+
 
 # =========================
 

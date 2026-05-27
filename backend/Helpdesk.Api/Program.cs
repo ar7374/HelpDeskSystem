@@ -35,13 +35,11 @@ builder.Services.AddDbContext<HelpdeskDbContext>(options =>
 // Redis Distributed Cache Configuration
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
-    options.ConfigurationOptions = new StackExchange.Redis.ConfigurationOptions 
-    { 
-        AbortOnConnectFail = false,
-        ConnectTimeout = 5000,
-        SyncTimeout = 5000
-    };
+    var redisConn = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    options.ConfigurationOptions = StackExchange.Redis.ConfigurationOptions.Parse(redisConn);
+    options.ConfigurationOptions.AbortOnConnectFail = false;
+    options.ConfigurationOptions.ConnectTimeout = 5000;
+    options.ConfigurationOptions.SyncTimeout = 5000;
 });
 
 // JWT Configuration
