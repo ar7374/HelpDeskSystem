@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { 
   Box, 
   Card, 
@@ -11,11 +11,7 @@ import {
   CircularProgress,
   InputAdornment,
   Divider,
-  Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions
+  Chip
 } from '@mui/material';
 import { 
   Email as EmailIcon, 
@@ -40,16 +36,19 @@ export const LoginPage: React.FC = () => {
     password: '',
   });
 
-  // Google Login simulated state variables
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [googleOpen, setGoogleOpen] = useState<boolean>(false);
-  const [googleEmailInput, setGoogleEmailInput] = useState<string>('');
   const [googleLoading, setGoogleLoading] = useState<boolean>(false);
+  const googleButtonRef = useRef<HTMLDivElement | null>(null);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
-  const handleGoogleSubmit = async (googleEmail: string) => {
+  const handleGoogleCredential = useCallback(async (credentialToken?: string) => {
     if (!form.tenantSlug) {
       setValidationError('Please enter your Tenant Slug first.');
-      setGoogleOpen(false);
+      return;
+    }
+
+    if (!credentialToken) {
+      setValidationError('Google did not return a sign-in credential. Please try again.');
       return;
     }
 
@@ -63,9 +62,9 @@ export const LoginPage: React.FC = () => {
       if (tenantRes.data && tenantRes.data.status && tenantRes.data.data) {
         const tenantId = tenantRes.data.data.id;
 
-        // 2. Perform Google Login validation against pre-registered corporate email
+        // 2. Validate the Google ID token server-side, then issue app tokens.
         const response = await axiosClient.post('/api/auth/google-login', {
-          credentialToken: googleEmail.trim().toLowerCase(),
+          credentialToken,
           tenantId
         });
 
@@ -80,7 +79,6 @@ export const LoginPage: React.FC = () => {
 
           // Set state
           dispatch(loginSuccess(loginData));
-          setGoogleOpen(false);
         } else {
           setValidationError(apiResponse.message || 'Google authentication failed.');
         }
@@ -90,11 +88,60 @@ export const LoginPage: React.FC = () => {
     } catch (error: any) {
       const errMsg = error.response?.data?.message || error.message || 'Google account not registered under this company.';
       setValidationError(errMsg);
-      setGoogleOpen(false);
     } finally {
       setGoogleLoading(false);
     }
-  };
+  }, [dispatch, form.tenantSlug]);
+
+  useEffect(() => {
+    if (!googleClientId || !googleButtonRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+    let attempts = 0;
+
+    const renderGoogleButton = () => {
+      if (cancelled) {
+        return;
+      }
+
+      if (!window.google?.accounts?.id) {
+        attempts += 1;
+        if (attempts < 40) {
+          window.setTimeout(renderGoogleButton, 250);
+        } else {
+          setValidationError('Google sign-in script could not be loaded.');
+        }
+        return;
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: (response) => {
+          handleGoogleCredential(response.credential);
+        },
+      });
+
+      if (googleButtonRef.current) {
+        googleButtonRef.current.innerHTML = '';
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: 'outline',
+          size: 'large',
+          type: 'standard',
+          shape: 'rectangular',
+          text: 'signin_with',
+          width: 360,
+        });
+      }
+    };
+
+    renderGoogleButton();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [googleClientId, handleGoogleCredential]);
 
   const DEMO_SUPER = {
     email: 'super@support.test',
@@ -364,44 +411,33 @@ export const LoginPage: React.FC = () => {
               {isLoading ? 'Signing In...' : 'Sign In'}
             </Button>
 
-            <Button
-              type="button"
-              fullWidth
-              variant="outlined"
-              onClick={() => {
-                if (!form.tenantSlug) {
-                  setValidationError('Please enter a Tenant Slug first.');
-                  return;
-                }
-                setGoogleEmailInput('');
-                setGoogleOpen(true);
-              }}
-              startIcon={
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
-                </svg>
-              }
+            <Box
               sx={{
-                py: 1.25,
-                fontSize: '0.95rem',
-                fontWeight: 700,
-                borderRadius: 2,
                 mb: 1.5,
-                borderColor: 'rgba(255, 255, 255, 0.15)',
-                color: '#ffffff',
-                bgcolor: 'rgba(255, 255, 255, 0.03)',
-                '&:hover': {
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
-                  bgcolor: 'rgba(255, 255, 255, 0.08)',
-                  transform: 'translateY(-1px)',
-                }
+                minHeight: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
-              Sign In with Google
-            </Button>
+              {googleClientId ? (
+                <Box
+                  ref={googleButtonRef}
+                  sx={{
+                    width: '100%',
+                    minHeight: 40,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    opacity: googleLoading ? 0.6 : 1,
+                    pointerEvents: googleLoading ? 'none' : 'auto',
+                  }}
+                />
+              ) : (
+                <Alert severity="warning" sx={{ width: '100%', borderRadius: 2 }}>
+                  Google sign-in needs VITE_GOOGLE_CLIENT_ID.
+                </Alert>
+              )}
+            </Box>
           </Box>
 
           <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.5)', textAlign: 'center', mb: 3 }}>
@@ -543,152 +579,6 @@ export const LoginPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Dynamic Google Authentication Simulator */}
-      <Dialog
-        open={googleOpen}
-        onClose={() => !googleLoading && setGoogleOpen(false)}
-        maxWidth="xs"
-        fullWidth
-        slotProps={{
-          paper: {
-            sx: {
-              borderRadius: 3,
-              p: 1,
-              bgcolor: '#0f172a',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              color: '#ffffff'
-            }
-          }
-        }}
-      >
-        <DialogTitle sx={{ fontWeight: 800, pb: 1, textAlign: 'center' }}>
-          Google Account Authentication
-        </DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 2 }}>
-          <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', textAlign: 'center', mb: 1 }}>
-            Sign in securely using your corporate Google credentials. The system will verify if your account is pre-registered by your Company Administrator.
-          </Typography>
-
-          <TextField
-            autoFocus
-            required
-            fullWidth
-            id="googleEmail"
-            label="Google Email Address"
-            type="email"
-            value={googleEmailInput}
-            onChange={(e) => setGoogleEmailInput(e.target.value)}
-            disabled={googleLoading}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <EmailIcon sx={{ color: 'rgba(255,255,255,0.4)' }} />
-                  </InputAdornment>
-                ),
-                style: { color: '#ffffff' }
-              }
-            }}
-            sx={{
-              '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.6)' },
-              '& .MuiOutlinedInput-root': {
-                '& fieldset': { borderColor: 'rgba(255,255,255,0.15)' },
-                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
-                '&.Mui-focused fieldset': { borderColor: 'primary.main' }
-              }
-            }}
-          />
-
-          <Divider sx={{ my: 1, borderColor: 'rgba(255, 255, 255, 0.08)' }}>
-            <Chip 
-              label="Or choose quick-demo corporate email" 
-              size="small" 
-              sx={{ 
-                bgcolor: 'rgba(255, 255, 255, 0.05)', 
-                color: 'rgba(255, 255, 255, 0.5)', 
-                fontWeight: 600,
-                fontSize: '0.7rem'
-              }} 
-            />
-          </Divider>
-
-          <Grid container spacing={1}>
-            <Grid size={6}>
-              <Button
-                fullWidth
-                size="small"
-                variant="outlined"
-                onClick={() => {
-                  setGoogleEmailInput(DEMO_ADMIN.email);
-                  handleGoogleSubmit(DEMO_ADMIN.email);
-                }}
-                sx={{ fontSize: '0.75rem', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}
-              >
-                Nisha (Admin)
-              </Button>
-            </Grid>
-            <Grid size={6}>
-              <Button
-                fullWidth
-                size="small"
-                variant="outlined"
-                onClick={() => {
-                  setGoogleEmailInput(DEMO_AGENT.email);
-                  handleGoogleSubmit(DEMO_AGENT.email);
-                }}
-                sx={{ fontSize: '0.75rem', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}
-              >
-                Rahul (Agent)
-              </Button>
-            </Grid>
-            <Grid size={6}>
-              <Button
-                fullWidth
-                size="small"
-                variant="outlined"
-                onClick={() => {
-                  setGoogleEmailInput(DEMO_CUSTOMER_1.email);
-                  handleGoogleSubmit(DEMO_CUSTOMER_1.email);
-                }}
-                sx={{ fontSize: '0.75rem', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}
-              >
-                Priya (Customer)
-              </Button>
-            </Grid>
-            <Grid size={6}>
-              <Button
-                fullWidth
-                size="small"
-                variant="outlined"
-                onClick={() => {
-                  setGoogleEmailInput(DEMO_CUSTOMER_2.email);
-                  handleGoogleSubmit(DEMO_CUSTOMER_2.email);
-                }}
-                sx={{ fontSize: '0.75rem', borderColor: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}
-              >
-                Arjun (Customer)
-              </Button>
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-          <Button 
-            onClick={() => setGoogleOpen(false)} 
-            disabled={googleLoading}
-            sx={{ color: 'rgba(255, 255, 255, 0.5)' }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => handleGoogleSubmit(googleEmailInput)}
-            variant="contained"
-            disabled={googleLoading || !googleEmailInput}
-            sx={{ fontWeight: 700 }}
-          >
-            {googleLoading ? <CircularProgress size={20} color="inherit" /> : 'Authenticate'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

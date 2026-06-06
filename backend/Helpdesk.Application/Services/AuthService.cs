@@ -3,6 +3,8 @@ using Helpdesk.Application.Repositories;
 using Helpdesk.Application.Responses;
 using Helpdesk.Domain.Entities;
 using Helpdesk.Domain.Enums;
+using Google.Apis.Auth;
+using Microsoft.Extensions.Configuration;
 
 namespace Helpdesk.Application.Services;
 
@@ -13,19 +15,22 @@ public class AuthService
     private readonly IPasswordHashService _passwordHashService;
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IConfiguration _configuration;
 
     public AuthService(
         IUserRepository userRepository,
         IJwtTokenService jwtTokenService,
         IPasswordHashService passwordHashService,
         IRefreshTokenService refreshTokenService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IConfiguration configuration)
     {
         _userRepository = userRepository;
         _jwtTokenService = jwtTokenService;
         _passwordHashService = passwordHashService;
         _refreshTokenService = refreshTokenService;
         _unitOfWork = unitOfWork;
+        _configuration = configuration;
     }
 
     public async Task<ApiResponse<LoginResponse>> Login(LoginRequest request)
@@ -194,54 +199,72 @@ public class AuthService
             return new ApiResponse<LoginResponse>
             {
                 StatusCode = 400,
-                Message = "Tenant ID and Google credential token are required",
+                Message = "Tenant ID and Google ID token are required",
                 Status = false
             };
         }
 
-        string email = string.Empty;
-        string fullName = string.Empty;
+        var googleClientId = _configuration["GoogleAuth:ClientId"];
+        if (string.IsNullOrWhiteSpace(googleClientId))
+        {
+            return new ApiResponse<LoginResponse>
+            {
+                StatusCode = 500,
+                Message = "Google authentication is not configured.",
+                Status = false
+            };
+        }
 
+        GoogleJsonWebSignature.Payload payload;
         try
         {
-            if (request.CredentialToken.Contains(".")) // Real JWT token
-            {
-                var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-                var jsonToken = handler.ReadToken(request.CredentialToken) as System.IdentityModel.Tokens.Jwt.JwtSecurityToken;
-                
-                email = jsonToken?.Claims.FirstOrDefault(c => c.Type == "email")?.Value 
-                        ?? jsonToken?.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value 
-                        ?? string.Empty;
-
-                fullName = jsonToken?.Claims.FirstOrDefault(c => c.Type == "name")?.Value 
-                           ?? jsonToken?.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value 
-                           ?? "Google User";
-            }
-            else
-            {
-                // Simulated token mode: passes raw email directly
-                email = request.CredentialToken.Trim();
-                fullName = email.Split('@')[0];
-            }
+            payload = await GoogleJsonWebSignature.ValidateAsync(
+                request.CredentialToken,
+                new GoogleJsonWebSignature.ValidationSettings
+                {
+                    Audience = new[] { googleClientId }
+                });
         }
-        catch
+        catch (InvalidJwtException)
         {
-            // Fallback to raw value if it fails to parse
-            email = request.CredentialToken.Trim();
-            fullName = email.Split('@')[0];
+            return new ApiResponse<LoginResponse>
+            {
+                StatusCode = 401,
+                Message = "Invalid Google ID token.",
+                Status = false
+            };
+        }
+        catch (Exception)
+        {
+            return new ApiResponse<LoginResponse>
+            {
+                StatusCode = 503,
+                Message = "Google token verification failed. Please try again.",
+                Status = false
+            };
         }
 
-        if (string.IsNullOrWhiteSpace(email))
+        if (string.IsNullOrWhiteSpace(payload.Email))
         {
             return new ApiResponse<LoginResponse>
             {
                 StatusCode = 400,
-                Message = "Failed to resolve email from Google credential token.",
+                Message = "Google ID token does not include an email address.",
                 Status = false
             };
         }
 
-        email = email.ToLower();
+        if (payload.EmailVerified != true)
+        {
+            return new ApiResponse<LoginResponse>
+            {
+                StatusCode = 403,
+                Message = "Google account email is not verified.",
+                Status = false
+            };
+        }
+
+        var email = payload.Email.Trim().ToLower();
 
         var tenant = await _unitOfWork.Tenants.GetById(request.TenantId);
         if (tenant == null)
