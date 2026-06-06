@@ -7,8 +7,6 @@ using Helpdesk.Application.Responses;
 using Helpdesk.Domain.Entities;
 using Helpdesk.Domain.Enums;
 using Microsoft.Extensions.Caching.Distributed;
-
-using Microsoft.AspNetCore.SignalR;
 namespace Helpdesk.Application.Services;
 
 public sealed class TicketService
@@ -38,7 +36,20 @@ public sealed class TicketService
         SearchRequest<TicketSearchCriteria> request,
         Guid tenantId)
     {
-        var paginatedTickets = await _unitOfWork.Tickets.GetPaginated(request, tenantId);
+        if (!CanAccessTenant(tenantId))
+        {
+            return ApiResponse<PaginatedListDto<TicketListItem>>.Forbidden(
+                ResponseMessages.Error.TenantAccessDenied);
+        }
+
+        Guid? customerScope = IsCustomer ? _currentUserService.UserId : null;
+        Guid? agentScope = IsAgent ? _currentUserService.UserId : null;
+
+        var paginatedTickets = await _unitOfWork.Tickets.GetPaginated(
+            request,
+            tenantId,
+            customerScope,
+            agentScope);
 
         var items = new List<TicketListItem>();
         foreach (var ticket in paginatedTickets.Data)
@@ -70,6 +81,12 @@ public sealed class TicketService
                 ResponseMessages.Error.TicketNotFound);
         }
 
+        if (!CanAccessTicket(ticket))
+        {
+            return ApiResponse<TicketDetails>.Forbidden(
+                ResponseMessages.Error.TicketAccessDenied);
+        }
+
         return ApiResponse<TicketDetails>.Success(
             ResponseMessages.Success.TicketFetched,
             await ToDetails(ticket));
@@ -82,6 +99,25 @@ public sealed class TicketService
         {
             return ApiResponse<TicketDetails>.BadRequest(
                 ResponseMessages.Error.TitleAndDescriptionRequired);
+        }
+
+        if (!CanAccessTenant(request.TenantId))
+        {
+            return ApiResponse<TicketDetails>.Forbidden(
+                ResponseMessages.Error.TenantAccessDenied);
+        }
+
+        var customerId = IsCustomer
+            ? _currentUserService.UserId
+            : request.CustomerId;
+
+        var customer = await _unitOfWork.Users.GetById(customerId);
+        if (customer is null ||
+            customer.TenantId != _currentUserService.TenantId ||
+            customer.Role != UserRole.Customer)
+        {
+            return ApiResponse<TicketDetails>.BadRequest(
+                ResponseMessages.Error.InvalidTicketCustomer);
         }
 
         var ticketCount = await _unitOfWork.Tickets.CountByTenantId(request.TenantId);
@@ -97,7 +133,7 @@ public sealed class TicketService
             Description = request.Description.Trim(),
             Priority = request.Priority,
             Status = TicketStatus.Open,
-            CustomerId = request.CustomerId,
+            CustomerId = customerId,
             CreatedAtUtc = now,
             SlaDueAtUtc = now.AddHours(GetSlaHours(request.Priority))
         };
@@ -128,6 +164,30 @@ public sealed class TicketService
         {
             return ApiResponse<TicketDetails>.NotFound(
                 ResponseMessages.Error.TicketNotFound);
+        }
+
+        if (!CanAccessTicket(ticket))
+        {
+            return ApiResponse<TicketDetails>.Forbidden(
+                ResponseMessages.Error.TicketUpdateDenied);
+        }
+
+        if (IsAgent && command.Request.AgentId != ticket.AgentId)
+        {
+            return ApiResponse<TicketDetails>.Forbidden(
+                ResponseMessages.Error.TicketAssignmentDenied);
+        }
+
+        if (IsAdmin && command.Request.AgentId is not null)
+        {
+            var assignedUser = await _unitOfWork.Users.GetById(command.Request.AgentId.Value);
+            if (assignedUser is null ||
+                assignedUser.TenantId != command.Route.TenantId ||
+                assignedUser.Role is not (UserRole.Agent or UserRole.Admin))
+            {
+                return ApiResponse<TicketDetails>.BadRequest(
+                    ResponseMessages.Error.InvalidTicketAgent);
+            }
         }
 
         var oldStatus = ticket.Status;
@@ -175,11 +235,17 @@ public sealed class TicketService
                 ResponseMessages.Error.TicketNotFound);
         }
 
+        if (!CanAccessTicket(ticket))
+        {
+            return ApiResponse<TicketDetails>.Forbidden(
+                ResponseMessages.Error.TicketAccessDenied);
+        }
+
         var comment = new TicketComment
         {
             Id = Guid.NewGuid(),
             TicketId = command.Route.TicketId,
-            AuthorId = command.Request.AuthorId,
+            AuthorId = _currentUserService.UserId,
             Body = command.Request.Body.Trim(),
             CreatedAtUtc = DateTime.UtcNow
         };
@@ -259,5 +325,34 @@ public sealed class TicketService
             TicketPriority.Medium => 24,
             _ => 48
         };
+    }
+
+    private bool IsAdmin => _currentUserService.Role == UserRole.Admin.ToString();
+    private bool IsAgent => _currentUserService.Role == UserRole.Agent.ToString();
+    private bool IsCustomer => _currentUserService.Role == UserRole.Customer.ToString();
+
+    private bool CanAccessTenant(Guid tenantId)
+    {
+        return tenantId == _currentUserService.TenantId;
+    }
+
+    private bool CanAccessTicket(Ticket ticket)
+    {
+        if (!CanAccessTenant(ticket.TenantId))
+        {
+            return false;
+        }
+
+        if (IsAdmin)
+        {
+            return true;
+        }
+
+        if (IsAgent)
+        {
+            return ticket.AgentId == _currentUserService.UserId;
+        }
+
+        return IsCustomer && ticket.CustomerId == _currentUserService.UserId;
     }
 }

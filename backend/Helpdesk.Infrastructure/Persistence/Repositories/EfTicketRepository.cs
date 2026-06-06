@@ -24,11 +24,25 @@ public class EfTicketRepository : ITicketRepository
             .ToListAsync();
     }
 
-    public async Task<PaginatedListDto<Ticket>> GetPaginated(SearchRequest<TicketSearchCriteria> request, Guid tenantId)
+    public async Task<PaginatedListDto<Ticket>> GetPaginated(
+        SearchRequest<TicketSearchCriteria> request,
+        Guid tenantId,
+        Guid? customerId = null,
+        Guid? agentId = null)
     {
         var query = _dbContext.Tickets
             .AsNoTracking()
             .Where(ticket => ticket.TenantId == tenantId);
+
+        if (customerId is not null)
+        {
+            query = query.Where(ticket => ticket.CustomerId == customerId);
+        }
+
+        if (agentId is not null)
+        {
+            query = query.Where(ticket => ticket.AgentId == agentId);
+        }
 
         if (request.Criteria is not null)
         {

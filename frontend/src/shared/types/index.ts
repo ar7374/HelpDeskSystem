@@ -146,7 +146,6 @@ export interface UpdateTicketRequest {
 }
 
 export interface AddCommentRequest {
-  authorId: string;
   body: string;
 }
 

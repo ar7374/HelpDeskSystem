@@ -39,6 +39,11 @@ public class ApiResponse<T>
         return Error(404, message);
     }
 
+    public static ApiResponse<T> Forbidden(string message)
+    {
+        return Error(403, message);
+    }
+
     private static ApiResponse<T> Error(int statusCode, string message)
     {
         return new ApiResponse<T>

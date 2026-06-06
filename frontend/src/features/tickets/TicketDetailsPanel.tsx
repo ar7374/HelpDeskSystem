@@ -115,7 +115,10 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({ open, ti
 
   // Role namespace
   const roleName = user?.role || 'Customer';
-  const isAgentOrAdmin = roleName === 'Admin' || roleName === 'Agent';
+  const isAdmin = roleName === 'Admin';
+  const isAgent = roleName === 'Agent';
+  const isAssignedAgent = isAgent && selectedTicket.agent?.id === user?.id;
+  const canChangeStatus = isAdmin || isAssignedAgent;
 
   // Calculate SLA countdown and breach alerts
   const isResolvedOrClosed = selectedTicket.status === TicketStatus.Resolved || selectedTicket.status === TicketStatus.Closed;
@@ -167,7 +170,6 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({ open, ti
         tenantId: user.tenantId,
         ticketId: selectedTicket.id,
         request: {
-          authorId: user.id,
           body: commentText.trim(),
         }
       })).unwrap();
@@ -325,8 +327,8 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({ open, ti
             </Grid>
           </Grid>
 
-          {/* Support Actions: Admin & Agent Controls */}
-          {isAgentOrAdmin && (
+          {/* Support Actions */}
+          {canChangeStatus && (
             <Box>
               <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700, mb: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Agent Operations Desk
@@ -348,23 +350,24 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({ open, ti
                   </Select>
                 </FormControl>
 
-                {/* Owner Assignment Dropdown */}
-                <FormControl fullWidth size="small">
-                  <InputLabel id="agent-select-label">Assign Agent</InputLabel>
-                  <Select
-                    labelId="agent-select-label"
-                    value={selectedTicket.agent?.id || 'unassigned'}
-                    label="Assign Agent"
-                    onChange={handleAgentChange}
-                  >
-                    <MenuItem value="unassigned">-- Unassigned Queue --</MenuItem>
-                    {seededAgents.map((ag) => (
-                      <MenuItem key={ag.id} value={ag.id}>
-                        {ag.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                {isAdmin && (
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="agent-select-label">Assign Agent</InputLabel>
+                    <Select
+                      labelId="agent-select-label"
+                      value={selectedTicket.agent?.id || 'unassigned'}
+                      label="Assign Agent"
+                      onChange={handleAgentChange}
+                    >
+                      <MenuItem value="unassigned">-- Unassigned Queue --</MenuItem>
+                      {seededAgents.map((ag) => (
+                        <MenuItem key={ag.id} value={ag.id}>
+                          {ag.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
               </Stack>
             </Box>
           )}

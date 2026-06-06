@@ -196,11 +196,11 @@ export const TicketsPage: React.FC = () => {
       label: 'SLA Status',
       render: (row) => renderSlaBadge(row.slaDueAtUtc, row.status)
     },
-    {
+    ...(!isCustomer ? [{
       id: 'customerName',
       label: 'Reporter',
-      render: (row) => <Box sx={{ fontSize: '0.85rem' }}>{row.customerName}</Box>
-    },
+      render: (row: TicketListItem) => <Box sx={{ fontSize: '0.85rem' }}>{row.customerName}</Box>
+    }] : []),
     {
       id: 'agentName',
       label: 'Assigned Owner',
